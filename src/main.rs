@@ -1,66 +1,124 @@
+use rand::Rng;
+
 fn main() {
-    let first_number = 204.0;
-    let factor = -0.665;
-    let _total_numbers = 19.0;
-    let sum: String;
+    let mut hash_table = HashTable::new();
 
-    if factor >= 1.0 {
-        sum = "Infinity".to_string();
-    } else if factor <= -1.0 {
-        sum = "Negative Infinity".to_string();
-    } else {
-        let actual_sum = first_number / (1.0 - factor);
+    let mut rng = rand::thread_rng();
 
-        sum = actual_sum.to_string();
+    let generated_values = (0..32)
+        .map(|_| rng.gen_range(10000..99999))
+        .collect::<Vec<i32>>();
+
+    for value in &generated_values {
+        // println!("\ninserting {}", &value);
+        hash_table.insert(*value);
+    }
+    let average_probing = hash_table.average_insert_probing();
+
+    // 2 keys in the hash table
+    let mut keys = (0..2)
+        .map(|_| generated_values[rng.gen_range(0..generated_values.len())])
+        .collect::<Vec<i32>>();
+
+    // 2 random keys
+    (0..2).for_each(|_| {
+        let random_key = rng.gen_range(10000..99999);
+
+        keys.push(random_key);
+    });
+
+    for key in keys {
+        println!("\nSearching for {}", &key);
+        hash_table.search_and_print(key);
     }
 
-    println!("Sum: {}", sum)
+    println!("\n{:?}", hash_table);
+    println!("\nAverage linear probing per insert: {}", average_probing);
+    println!(
+        "Average linear probing per search: {}",
+        hash_table.average_search_probing()
+    );
+}
+#[derive(Debug)]
+struct HashTable {
+    arr: [i32; 50],
+    insert_probe_count: i32,
+    insert_count: i32,
+    search_probe_count: i32,
+    search_count: i32,
 }
 
-// fn geometric_seqence() {
-//     let first_number = 25;
-//     let factor = -5;
-//     let total_numbers = 11;
+impl HashTable {
+    fn new() -> HashTable {
+        HashTable {
+            arr: [0; 50],
+            insert_probe_count: 0,
+            insert_count: 0,
+            search_probe_count: 0,
+            search_count: 0,
+        }
+    }
 
-//     let mut sum = 0;
+    fn insert(&mut self, value: i32) {
+        let mut index = (value % 50) as usize;
+        let starting_index = index;
 
-//     let mut members = vec![];
-//     let mut sums = vec![];
+        if self.arr[index] != 0 {
+            while self.arr[index] != 0 {
+                // println!("collision at {}", index);
+                index += 1;
+                self.insert_probe_count += 1;
 
-//     for n in 0..total_numbers {
-//         let member = first_number * i32::pow(factor, n);
+                if index >= 50 {
+                    index = 0;
+                }
 
-//         sum += member;
+                if index == starting_index {
+                    panic!("Hash table is full");
+                }
+            }
+        }
+        self.insert_count += 1;
+        // println!("inserting {} at {}", value, index);
+        self.arr[index] = value;
+    }
 
-//         members.push(member);
+    fn search(&mut self, value: i32) -> bool {
+        let mut index = (value % 50) as usize;
+        let starting_index = index;
+        self.search_count += 1;
 
-//         sums.push(sum);
-//     }
+        while self.arr[index] != value && self.arr[index] != 0 {
+            index += 1;
 
-//     println!("Members: {:?}", members);
-//     println!("Sums: {:?}", sums);
-// }
+            if index == starting_index {
+                return false;
+            }
 
-// fn arithmetic_sequence() {
-//     let first_number = 200;
-//     let common_difference = -124;
-//     let total_numbers = 10;
+            self.search_probe_count += 1;
 
-//     let mut sum = 0;
+            if index >= 50 {
+                index = 0;
+            }
+        }
 
-//     let mut members = vec![];
-//     let mut sums = vec![];
+        true
+    }
 
-//     for n in 0..total_numbers {
-//         let member = first_number + (n * common_difference);
+    fn search_and_print(&mut self, value: i32) {
+        let exists = self.search(value);
 
-//         sum += member;
+        match exists {
+            true => println!("Key {} found", value),
+            false => println!("Key {} does not exist in the hash table", value),
+        }
+    }
 
-//         members.push(member);
+    fn average_insert_probing(&self) -> f32 {
+        self.insert_probe_count as f32 / self.insert_count as f32
+    }
 
-//         sums.push(sum);
-//     }
-
-//     println!("Members: {:?}", members);
-//     println!("Sums: {:?}", sums);
-// }
+    fn average_search_probing(&self) -> f32 {
+        self.search_probe_count as f32 / self.search_count as f32
+    }
+}
